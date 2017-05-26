@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,8 +12,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using HandleUtils;
+using SandboxAnalysisUtils;
 using NDesk.Options;
+using NtApiDotNet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,8 +39,8 @@ namespace CheckNetworkAccess
         }
 
         static void ConnectTest(int pid, IPEndPoint ep)
-        {           
-            using (ImpersonateProcess imp = NativeBridge.Impersonate(pid, TokenSecurityLevel.Impersonate))
+        {
+            using (var imp = NtToken.Impersonate(pid, SecurityImpersonationLevel.Impersonation))
             {
                 TcpClient client = new TcpClient();
                 client.Connect(ep);
@@ -51,7 +52,7 @@ namespace CheckNetworkAccess
 
         static void ListenTest(int pid, IPEndPoint ep)
         {
-            using (ImpersonateProcess imp = NativeBridge.Impersonate(pid, TokenSecurityLevel.Impersonate))
+            using (var imp = NtToken.Impersonate(pid, SecurityImpersonationLevel.Impersonation))
             {
                 TcpListener listener = new TcpListener(ep);
 

@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,6 +12,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+using SandboxAnalysisUtils;
+using NtApiDotNet;
 using System;
 using System.IO;
 using System.Windows.Forms;
@@ -21,12 +23,12 @@ namespace EditSection
 {
     public partial class SectionEditorForm : DockContent
     {
-        NativeMappedFile _map;        
+        NtMappedSection _map;        
         bool _readOnly;
         NativeMappedFileByteProvider _prov;
         Random _random;
 
-        private SectionEditorForm(NativeMappedFile map, bool readOnly)
+        private SectionEditorForm(NtMappedSection map, bool readOnly)
         {
             _random = new Random();
             _map = map;
@@ -45,13 +47,13 @@ namespace EditSection
             Disposed += SectionEditorForm_Disposed;
         }
 
-        public SectionEditorForm(NativeMappedFile map, HandleEntry handle, bool readOnly) 
+        public SectionEditorForm(NtMappedSection map, NtHandle handle, bool readOnly) 
             : this(map, readOnly)        
         {                           
-            TabText = String.Format("Process {0} - Handle {1} {2}", handle.ProcessId, handle.Handle.ToInt64(), _readOnly ? "(RO)" : "");            
+            TabText = String.Format("Process {0} - Handle {1} {2}", handle.ProcessId, handle.Handle, _readOnly ? "(RO)" : "");            
         }
 
-        public SectionEditorForm(NativeMappedFile map, string name, bool readOnly)
+        public SectionEditorForm(NtMappedSection map, string name, bool readOnly)
             : this(map, readOnly)
         {            
             TabText = String.Format("{0} {1}", name, _readOnly ? "(RO)" : "");

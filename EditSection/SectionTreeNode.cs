@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,68 +12,69 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using HandleUtils;
+using NtApiDotNet;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace EditSection
 {
     class SectionTreeNode : TreeNode
     {
-        private HandleEntry _ent;
+        private NtHandle _ent;
 
-        private static string FormatText(HandleEntry ent)
+        private static string FormatText(NtHandle ent)
         {
-            NativeHandle h = NativeBridge.DuplicateHandleFromProcess(ent.ProcessId, ent.Handle, 0, DuplicateHandleOptions.DuplicateSameAccess);
-
+            string size = String.Empty;
             try
             {
-                StringBuilder builder = new StringBuilder();
-
-                if ((ent.GrantedAccess & (int)HandleUtils.AccessRights.SectionMapRead) != 0)
+                using (NtSection section = NtSection.DuplicateFrom(ent.ProcessId, new IntPtr(ent.Handle), SectionAccessRights.Query))
                 {
-                    builder.Append("R");
+                    size = section.Size.ToString();
                 }
-
-                if ((ent.GrantedAccess & (int)HandleUtils.AccessRights.SectionMapWrite) != 0)
-                {
-                    builder.Append("W");
-                }
-
-                return String.Format("[{0}/0x{0:X}] {1} Size: {2} Access: {3}", ent.Handle.ToInt64(), ent.ObjectName, NativeBridge.GetSectionSize(h), builder.ToString());
             }
-            finally
+            catch (NtException)
             {
-                h.Close();
+                size = "Unknown";
             }
+
+            StringBuilder builder = new StringBuilder();
+            NtType section_type = NtType.GetTypeByName("section");
+
+            if (section_type.HasReadPermission(ent.GrantedAccess))
+            {
+                builder.Append("R");
+            }
+
+            if (section_type.HasWritePermission(ent.GrantedAccess))
+            {
+                builder.Append("W");
+            }
+
+            return String.Format("[{0}/0x{0:X}] {1} Size: {2} Access: {3}", ent.Handle, ent.Name, size, builder.ToString());
         }
 
-        public SectionTreeNode(HandleEntry ent)
+        public SectionTreeNode(NtHandle ent)
             : base(FormatText(ent))
         {
             _ent = ent;
         }
 
-        public NativeMappedFile OpenMappedFile(bool writable)
+        public NtMappedSection OpenMappedFile(bool writable)
         {
-            AccessRights accessRights = AccessRights.SectionMapRead;
+            SectionAccessRights accessRights = SectionAccessRights.MapRead;
 
             if (writable)
             {
-                accessRights |= AccessRights.SectionMapWrite;
+                accessRights |= SectionAccessRights.MapWrite;
             }
 
-            using (NativeHandle h = NativeBridge.DuplicateHandleFromProcess(_ent.ProcessId, 
-                _ent.Handle, (uint)accessRights, DuplicateHandleOptions.None))
+            using (NtSection section = NtSection.DuplicateFrom(_ent.ProcessId, new IntPtr(_ent.Handle), accessRights))
             {
-                return NativeBridge.MapFile(h, writable);
+                return section.Map(writable ? MemoryAllocationProtect.ReadWrite : MemoryAllocationProtect.ReadOnly);
             }
         }
 
-        public HandleEntry SectionHandle { get { return _ent; } }
+        public NtHandle SectionHandle { get { return _ent; } }
     }
 }

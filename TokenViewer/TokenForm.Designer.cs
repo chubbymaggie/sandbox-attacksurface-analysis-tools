@@ -33,6 +33,7 @@
             System.Windows.Forms.Label label7;
             System.Windows.Forms.Label label6;
             System.Windows.Forms.GroupBox groupBoxToken;
+            System.Windows.Forms.Label label25;
             System.Windows.Forms.Label label13;
             System.Windows.Forms.Label label8;
             System.Windows.Forms.Label label5;
@@ -61,12 +62,13 @@
             System.Windows.Forms.GroupBox groupBox1;
             System.Windows.Forms.Label label16;
             System.Windows.Forms.GroupBox groupBox2;
+            System.Windows.Forms.Label label26;
             System.Windows.Forms.Label label22;
             System.Windows.Forms.Label label20;
             System.Windows.Forms.Label label19;
             System.Windows.Forms.Label label18;
             System.Windows.Forms.Label label17;
-            System.Windows.Forms.GroupBox groupBox3;
+            System.Windows.Forms.GroupBox groupBoxSafer;
             System.Windows.Forms.Label label21;
             System.Windows.Forms.GroupBox groupBox4;
             System.Windows.Forms.Label label24;
@@ -76,6 +78,7 @@
             this.groupBoxSource = new System.Windows.Forms.GroupBox();
             this.txtSourceId = new System.Windows.Forms.TextBox();
             this.txtSourceName = new System.Windows.Forms.TextBox();
+            this.txtIsElevated = new System.Windows.Forms.TextBox();
             this.btnSetIL = new System.Windows.Forms.Button();
             this.comboBoxIL = new System.Windows.Forms.ComboBox();
             this.txtOriginLoginId = new System.Windows.Forms.TextBox();
@@ -93,21 +96,33 @@
             this.txtTokenId = new System.Windows.Forms.TextBox();
             this.btnPermissions = new System.Windows.Forms.Button();
             this.listViewGroups = new System.Windows.Forms.ListView();
+            this.contextMenuStripGroups = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.enableGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.selectAllGroupsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.listViewDefDacl = new System.Windows.Forms.ListView();
             this.txtPrimaryGroup = new System.Windows.Forms.TextBox();
             this.txtOwner = new System.Windows.Forms.TextBox();
+            this.btnImpersonate = new System.Windows.Forms.Button();
             this.comboBoxILForDup = new System.Windows.Forms.ComboBox();
             this.btnDuplicate = new System.Windows.Forms.Button();
             this.comboBoxImpLevel = new System.Windows.Forms.ComboBox();
             this.comboBoxTokenType = new System.Windows.Forms.ComboBox();
+            this.checkBoxUseNetLogon = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseWmi = new System.Windows.Forms.CheckBox();
             this.checkBoxMakeInteractive = new System.Windows.Forms.CheckBox();
             this.btnCreateProcess = new System.Windows.Forms.Button();
             this.txtCommandLine = new System.Windows.Forms.TextBox();
+            this.btnToggleVirtualizationEnabled = new System.Windows.Forms.Button();
+            this.txtHandleAccess = new System.Windows.Forms.TextBox();
+            this.btnToggleUIAccess = new System.Windows.Forms.Button();
+            this.treeViewSecurityAttributes = new System.Windows.Forms.TreeView();
+            this.llbSecurityAttributes = new System.Windows.Forms.Label();
             this.txtMandatoryILPolicy = new System.Windows.Forms.TextBox();
             this.txtVirtualizationEnabled = new System.Windows.Forms.TextBox();
             this.txtVirtualizationAllowed = new System.Windows.Forms.TextBox();
             this.txtSandboxInert = new System.Windows.Forms.TextBox();
             this.txtUIAccess = new System.Windows.Forms.TextBox();
+            this.btnCreateSandbox = new System.Windows.Forms.Button();
             this.comboBoxSaferLevel = new System.Windows.Forms.ComboBox();
             this.checkBoxSaferMakeInert = new System.Windows.Forms.CheckBox();
             this.btnComputeSafer = new System.Windows.Forms.Button();
@@ -118,6 +133,10 @@
             this.tabControlMain = new System.Windows.Forms.TabControl();
             this.tabPagePrivs = new System.Windows.Forms.TabPage();
             this.listViewPrivs = new System.Windows.Forms.ListView();
+            this.contextMenuStripPrivileges = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.enablePrivilegeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.removePrivilegeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.selectAllPrivsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tabPageRestricted = new System.Windows.Forms.TabPage();
             this.listViewRestrictedSids = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -130,12 +149,12 @@
             this.txtPackageSid = new System.Windows.Forms.TextBox();
             this.tabPageMisc = new System.Windows.Forms.TabPage();
             this.tabPageOperations = new System.Windows.Forms.TabPage();
-            this.contextMenuStripPrivileges = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.enablePrivilegeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             tabPageMain = new System.Windows.Forms.TabPage();
             label7 = new System.Windows.Forms.Label();
             label6 = new System.Windows.Forms.Label();
             groupBoxToken = new System.Windows.Forms.GroupBox();
+            label25 = new System.Windows.Forms.Label();
             label13 = new System.Windows.Forms.Label();
             label8 = new System.Windows.Forms.Label();
             label5 = new System.Windows.Forms.Label();
@@ -164,12 +183,13 @@
             groupBox1 = new System.Windows.Forms.GroupBox();
             label16 = new System.Windows.Forms.Label();
             groupBox2 = new System.Windows.Forms.GroupBox();
+            label26 = new System.Windows.Forms.Label();
             label22 = new System.Windows.Forms.Label();
             label20 = new System.Windows.Forms.Label();
             label19 = new System.Windows.Forms.Label();
             label18 = new System.Windows.Forms.Label();
             label17 = new System.Windows.Forms.Label();
-            groupBox3 = new System.Windows.Forms.GroupBox();
+            groupBoxSafer = new System.Windows.Forms.GroupBox();
             label21 = new System.Windows.Forms.Label();
             groupBox4 = new System.Windows.Forms.GroupBox();
             label24 = new System.Windows.Forms.Label();
@@ -180,19 +200,20 @@
             this.groupBoxSource.SuspendLayout();
             groupBoxToken.SuspendLayout();
             tabPageGroups.SuspendLayout();
+            this.contextMenuStripGroups.SuspendLayout();
             tabPageDefaultDacl.SuspendLayout();
             groupBoxDuplicate.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox2.SuspendLayout();
-            groupBox3.SuspendLayout();
+            groupBoxSafer.SuspendLayout();
             groupBox4.SuspendLayout();
             this.tabControlMain.SuspendLayout();
             this.tabPagePrivs.SuspendLayout();
+            this.contextMenuStripPrivileges.SuspendLayout();
             this.tabPageRestricted.SuspendLayout();
             this.tabPageAppContainer.SuspendLayout();
             this.tabPageMisc.SuspendLayout();
             this.tabPageOperations.SuspendLayout();
-            this.contextMenuStripPrivileges.SuspendLayout();
             this.SuspendLayout();
             // 
             // tabPageMain
@@ -203,7 +224,7 @@
             tabPageMain.Location = new System.Drawing.Point(4, 22);
             tabPageMain.Name = "tabPageMain";
             tabPageMain.Padding = new System.Windows.Forms.Padding(3);
-            tabPageMain.Size = new System.Drawing.Size(467, 451);
+            tabPageMain.Size = new System.Drawing.Size(467, 457);
             tabPageMain.TabIndex = 0;
             tabPageMain.Text = "Main Details";
             tabPageMain.UseVisualStyleBackColor = true;
@@ -214,7 +235,7 @@
             this.groupBoxSource.Controls.Add(label7);
             this.groupBoxSource.Controls.Add(this.txtSourceName);
             this.groupBoxSource.Controls.Add(label6);
-            this.groupBoxSource.Location = new System.Drawing.Point(6, 338);
+            this.groupBoxSource.Location = new System.Drawing.Point(6, 346);
             this.groupBoxSource.Name = "groupBoxSource";
             this.groupBoxSource.Size = new System.Drawing.Size(453, 76);
             this.groupBoxSource.TabIndex = 20;
@@ -257,6 +278,8 @@
             // 
             // groupBoxToken
             // 
+            groupBoxToken.Controls.Add(this.txtIsElevated);
+            groupBoxToken.Controls.Add(label25);
             groupBoxToken.Controls.Add(this.btnSetIL);
             groupBoxToken.Controls.Add(this.comboBoxIL);
             groupBoxToken.Controls.Add(this.txtOriginLoginId);
@@ -283,10 +306,27 @@
             groupBoxToken.Controls.Add(this.txtTokenId);
             groupBoxToken.Location = new System.Drawing.Point(6, 6);
             groupBoxToken.Name = "groupBoxToken";
-            groupBoxToken.Size = new System.Drawing.Size(453, 307);
+            groupBoxToken.Size = new System.Drawing.Size(453, 333);
             groupBoxToken.TabIndex = 19;
             groupBoxToken.TabStop = false;
             groupBoxToken.Text = "Token";
+            // 
+            // txtIsElevated
+            // 
+            this.txtIsElevated.Location = new System.Drawing.Point(115, 303);
+            this.txtIsElevated.Name = "txtIsElevated";
+            this.txtIsElevated.ReadOnly = true;
+            this.txtIsElevated.Size = new System.Drawing.Size(142, 20);
+            this.txtIsElevated.TabIndex = 27;
+            // 
+            // label25
+            // 
+            label25.AutoSize = true;
+            label25.Location = new System.Drawing.Point(8, 306);
+            label25.Name = "label25";
+            label25.Size = new System.Drawing.Size(63, 13);
+            label25.TabIndex = 26;
+            label25.Text = "Is Elevated:";
             // 
             // btnSetIL
             // 
@@ -301,13 +341,13 @@
             // 
             // comboBoxIL
             // 
-            this.comboBoxIL.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxIL.FormattingEnabled = true;
             this.comboBoxIL.Location = new System.Drawing.Point(115, 224);
             this.comboBoxIL.Name = "comboBoxIL";
             this.comboBoxIL.Size = new System.Drawing.Size(142, 21);
             this.comboBoxIL.TabIndex = 24;
             this.comboBoxIL.SelectedIndexChanged += new System.EventHandler(this.comboBoxIL_SelectedIndexChanged);
+            this.comboBoxIL.TextUpdate += new System.EventHandler(this.comboBoxIL_TextUpdate);
             // 
             // txtOriginLoginId
             // 
@@ -502,7 +542,7 @@
             // 
             // btnPermissions
             // 
-            this.btnPermissions.Location = new System.Drawing.Point(3, 420);
+            this.btnPermissions.Location = new System.Drawing.Point(3, 428);
             this.btnPermissions.Name = "btnPermissions";
             this.btnPermissions.Size = new System.Drawing.Size(75, 23);
             this.btnPermissions.TabIndex = 16;
@@ -516,7 +556,7 @@
             tabPageGroups.Location = new System.Drawing.Point(4, 22);
             tabPageGroups.Name = "tabPageGroups";
             tabPageGroups.Padding = new System.Windows.Forms.Padding(3);
-            tabPageGroups.Size = new System.Drawing.Size(467, 451);
+            tabPageGroups.Size = new System.Drawing.Size(467, 457);
             tabPageGroups.TabIndex = 1;
             tabPageGroups.Text = "Groups";
             tabPageGroups.UseVisualStyleBackColor = true;
@@ -526,11 +566,12 @@
             this.listViewGroups.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             columnHeaderName,
             columnHeaderFlags});
+            this.listViewGroups.ContextMenuStrip = this.contextMenuStripGroups;
             this.listViewGroups.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewGroups.FullRowSelect = true;
             this.listViewGroups.Location = new System.Drawing.Point(3, 3);
             this.listViewGroups.Name = "listViewGroups";
-            this.listViewGroups.Size = new System.Drawing.Size(461, 445);
+            this.listViewGroups.Size = new System.Drawing.Size(461, 451);
             this.listViewGroups.TabIndex = 0;
             this.listViewGroups.UseCompatibleStateImageBehavior = false;
             this.listViewGroups.View = System.Windows.Forms.View.Details;
@@ -545,6 +586,30 @@
             columnHeaderFlags.Text = "Flags";
             columnHeaderFlags.Width = 194;
             // 
+            // contextMenuStripGroups
+            // 
+            this.contextMenuStripGroups.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.enableGroupToolStripMenuItem,
+            this.selectAllGroupsToolStripMenuItem});
+            this.contextMenuStripGroups.Name = "contextMenuStripGroups";
+            this.contextMenuStripGroups.Size = new System.Drawing.Size(165, 48);
+            this.contextMenuStripGroups.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStripGroups_Opening);
+            // 
+            // enableGroupToolStripMenuItem
+            // 
+            this.enableGroupToolStripMenuItem.Name = "enableGroupToolStripMenuItem";
+            this.enableGroupToolStripMenuItem.Size = new System.Drawing.Size(164, 22);
+            this.enableGroupToolStripMenuItem.Text = "Enable Group";
+            this.enableGroupToolStripMenuItem.Click += new System.EventHandler(this.enableGroupToolStripMenuItem_Click);
+            // 
+            // selectAllGroupsToolStripMenuItem
+            // 
+            this.selectAllGroupsToolStripMenuItem.Name = "selectAllGroupsToolStripMenuItem";
+            this.selectAllGroupsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
+            this.selectAllGroupsToolStripMenuItem.Size = new System.Drawing.Size(164, 22);
+            this.selectAllGroupsToolStripMenuItem.Text = "Select All";
+            this.selectAllGroupsToolStripMenuItem.Click += new System.EventHandler(this.selectAllGroupsToolStripMenuItem_Click);
+            // 
             // tabPageDefaultDacl
             // 
             tabPageDefaultDacl.Controls.Add(this.listViewDefDacl);
@@ -555,7 +620,7 @@
             tabPageDefaultDacl.Location = new System.Drawing.Point(4, 22);
             tabPageDefaultDacl.Name = "tabPageDefaultDacl";
             tabPageDefaultDacl.Padding = new System.Windows.Forms.Padding(3);
-            tabPageDefaultDacl.Size = new System.Drawing.Size(467, 451);
+            tabPageDefaultDacl.Size = new System.Drawing.Size(467, 457);
             tabPageDefaultDacl.TabIndex = 2;
             tabPageDefaultDacl.Text = "Default Dacl";
             tabPageDefaultDacl.UseVisualStyleBackColor = true;
@@ -651,6 +716,7 @@
             // 
             // groupBoxDuplicate
             // 
+            groupBoxDuplicate.Controls.Add(this.btnImpersonate);
             groupBoxDuplicate.Controls.Add(lblILForDup);
             groupBoxDuplicate.Controls.Add(this.comboBoxILForDup);
             groupBoxDuplicate.Controls.Add(this.btnDuplicate);
@@ -665,6 +731,17 @@
             groupBoxDuplicate.TabStop = false;
             groupBoxDuplicate.Text = "Duplicate Token";
             // 
+            // btnImpersonate
+            // 
+            this.btnImpersonate.Location = new System.Drawing.Point(338, 76);
+            this.btnImpersonate.Name = "btnImpersonate";
+            this.btnImpersonate.Size = new System.Drawing.Size(75, 23);
+            this.btnImpersonate.TabIndex = 7;
+            this.btnImpersonate.Text = "Round-Trip";
+            this.toolTip.SetToolTip(this.btnImpersonate, "This impersonates the token then reads it back from the thread");
+            this.btnImpersonate.UseVisualStyleBackColor = true;
+            this.btnImpersonate.Click += new System.EventHandler(this.btnImpersonate_Click);
+            // 
             // lblILForDup
             // 
             lblILForDup.AutoSize = true;
@@ -676,7 +753,6 @@
             // 
             // comboBoxILForDup
             // 
-            this.comboBoxILForDup.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxILForDup.FormattingEnabled = true;
             this.comboBoxILForDup.Location = new System.Drawing.Point(317, 22);
             this.comboBoxILForDup.Name = "comboBoxILForDup";
@@ -732,6 +808,8 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(this.checkBoxUseNetLogon);
+            groupBox1.Controls.Add(this.checkBoxUseWmi);
             groupBox1.Controls.Add(this.checkBoxMakeInteractive);
             groupBox1.Controls.Add(this.btnCreateProcess);
             groupBox1.Controls.Add(this.txtCommandLine);
@@ -742,6 +820,26 @@
             groupBox1.TabIndex = 1;
             groupBox1.TabStop = false;
             groupBox1.Text = "Create Process";
+            // 
+            // checkBoxUseNetLogon
+            // 
+            this.checkBoxUseNetLogon.AutoSize = true;
+            this.checkBoxUseNetLogon.Location = new System.Drawing.Point(279, 59);
+            this.checkBoxUseNetLogon.Name = "checkBoxUseNetLogon";
+            this.checkBoxUseNetLogon.Size = new System.Drawing.Size(98, 17);
+            this.checkBoxUseNetLogon.TabIndex = 5;
+            this.checkBoxUseNetLogon.Text = "Use Net Logon";
+            this.checkBoxUseNetLogon.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxUseWmi
+            // 
+            this.checkBoxUseWmi.AutoSize = true;
+            this.checkBoxUseWmi.Location = new System.Drawing.Point(202, 59);
+            this.checkBoxUseWmi.Name = "checkBoxUseWmi";
+            this.checkBoxUseWmi.Size = new System.Drawing.Size(71, 17);
+            this.checkBoxUseWmi.TabIndex = 4;
+            this.checkBoxUseWmi.Text = "Use WMI";
+            this.checkBoxUseWmi.UseVisualStyleBackColor = true;
             // 
             // checkBoxMakeInteractive
             // 
@@ -782,6 +880,15 @@
             // 
             // groupBox2
             // 
+            groupBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            groupBox2.Controls.Add(this.btnToggleVirtualizationEnabled);
+            groupBox2.Controls.Add(label26);
+            groupBox2.Controls.Add(this.txtHandleAccess);
+            groupBox2.Controls.Add(this.btnToggleUIAccess);
+            groupBox2.Controls.Add(this.treeViewSecurityAttributes);
+            groupBox2.Controls.Add(this.llbSecurityAttributes);
             groupBox2.Controls.Add(label22);
             groupBox2.Controls.Add(this.txtMandatoryILPolicy);
             groupBox2.Controls.Add(label20);
@@ -794,10 +901,66 @@
             groupBox2.Controls.Add(this.txtUIAccess);
             groupBox2.Location = new System.Drawing.Point(8, 6);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new System.Drawing.Size(451, 157);
+            groupBox2.Size = new System.Drawing.Size(451, 355);
             groupBox2.TabIndex = 0;
             groupBox2.TabStop = false;
             groupBox2.Text = "Additional Properties";
+            // 
+            // btnToggleVirtualizationEnabled
+            // 
+            this.btnToggleVirtualizationEnabled.Location = new System.Drawing.Point(235, 90);
+            this.btnToggleVirtualizationEnabled.Name = "btnToggleVirtualizationEnabled";
+            this.btnToggleVirtualizationEnabled.Size = new System.Drawing.Size(75, 23);
+            this.btnToggleVirtualizationEnabled.TabIndex = 21;
+            this.btnToggleVirtualizationEnabled.Text = "Toggle";
+            this.btnToggleVirtualizationEnabled.UseVisualStyleBackColor = true;
+            this.btnToggleVirtualizationEnabled.Click += new System.EventHandler(this.btnToggleVirtualizationEnabled_Click);
+            // 
+            // label26
+            // 
+            label26.AutoSize = true;
+            label26.Location = new System.Drawing.Point(6, 150);
+            label26.Name = "label26";
+            label26.Size = new System.Drawing.Size(82, 13);
+            label26.TabIndex = 19;
+            label26.Text = "Handle Access:";
+            // 
+            // txtHandleAccess
+            // 
+            this.txtHandleAccess.Location = new System.Drawing.Point(121, 147);
+            this.txtHandleAccess.Name = "txtHandleAccess";
+            this.txtHandleAccess.ReadOnly = true;
+            this.txtHandleAccess.Size = new System.Drawing.Size(217, 20);
+            this.txtHandleAccess.TabIndex = 20;
+            // 
+            // btnToggleUIAccess
+            // 
+            this.btnToggleUIAccess.Location = new System.Drawing.Point(235, 11);
+            this.btnToggleUIAccess.Name = "btnToggleUIAccess";
+            this.btnToggleUIAccess.Size = new System.Drawing.Size(75, 23);
+            this.btnToggleUIAccess.TabIndex = 18;
+            this.btnToggleUIAccess.Text = "Toggle";
+            this.btnToggleUIAccess.UseVisualStyleBackColor = true;
+            this.btnToggleUIAccess.Click += new System.EventHandler(this.btnToggleUIAccess_Click);
+            // 
+            // treeViewSecurityAttributes
+            // 
+            this.treeViewSecurityAttributes.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.treeViewSecurityAttributes.Location = new System.Drawing.Point(9, 192);
+            this.treeViewSecurityAttributes.Name = "treeViewSecurityAttributes";
+            this.treeViewSecurityAttributes.Size = new System.Drawing.Size(396, 144);
+            this.treeViewSecurityAttributes.TabIndex = 17;
+            // 
+            // llbSecurityAttributes
+            // 
+            this.llbSecurityAttributes.AutoSize = true;
+            this.llbSecurityAttributes.Location = new System.Drawing.Point(6, 176);
+            this.llbSecurityAttributes.Name = "llbSecurityAttributes";
+            this.llbSecurityAttributes.Size = new System.Drawing.Size(95, 13);
+            this.llbSecurityAttributes.TabIndex = 16;
+            this.llbSecurityAttributes.Text = "Security Attributes:";
             // 
             // label22
             // 
@@ -884,18 +1047,29 @@
             this.txtUIAccess.Size = new System.Drawing.Size(108, 20);
             this.txtUIAccess.TabIndex = 7;
             // 
-            // groupBox3
+            // groupBoxSafer
             // 
-            groupBox3.Controls.Add(label21);
-            groupBox3.Controls.Add(this.comboBoxSaferLevel);
-            groupBox3.Controls.Add(this.checkBoxSaferMakeInert);
-            groupBox3.Controls.Add(this.btnComputeSafer);
-            groupBox3.Location = new System.Drawing.Point(3, 225);
-            groupBox3.Name = "groupBox3";
-            groupBox3.Size = new System.Drawing.Size(458, 90);
-            groupBox3.TabIndex = 2;
-            groupBox3.TabStop = false;
-            groupBox3.Text = "Computer Safer Token";
+            groupBoxSafer.Controls.Add(this.btnCreateSandbox);
+            groupBoxSafer.Controls.Add(label21);
+            groupBoxSafer.Controls.Add(this.comboBoxSaferLevel);
+            groupBoxSafer.Controls.Add(this.checkBoxSaferMakeInert);
+            groupBoxSafer.Controls.Add(this.btnComputeSafer);
+            groupBoxSafer.Location = new System.Drawing.Point(3, 225);
+            groupBoxSafer.Name = "groupBoxSafer";
+            groupBoxSafer.Size = new System.Drawing.Size(458, 90);
+            groupBoxSafer.TabIndex = 2;
+            groupBoxSafer.TabStop = false;
+            groupBoxSafer.Text = "Restricted Tokens";
+            // 
+            // btnCreateSandbox
+            // 
+            this.btnCreateSandbox.Location = new System.Drawing.Point(352, 56);
+            this.btnCreateSandbox.Name = "btnCreateSandbox";
+            this.btnCreateSandbox.Size = new System.Drawing.Size(100, 23);
+            this.btnCreateSandbox.TabIndex = 8;
+            this.btnCreateSandbox.Text = "Create Sandbox";
+            this.btnCreateSandbox.UseVisualStyleBackColor = true;
+            this.btnCreateSandbox.Click += new System.EventHandler(this.btnCreateSandbox_Click);
             // 
             // label21
             // 
@@ -931,7 +1105,7 @@
             this.btnComputeSafer.Name = "btnComputeSafer";
             this.btnComputeSafer.Size = new System.Drawing.Size(75, 23);
             this.btnComputeSafer.TabIndex = 3;
-            this.btnComputeSafer.Text = "Create";
+            this.btnComputeSafer.Text = "Create Safer";
             this.btnComputeSafer.UseVisualStyleBackColor = true;
             this.btnComputeSafer.Click += new System.EventHandler(this.btnComputeSafer_Click);
             // 
@@ -1029,7 +1203,7 @@
             this.tabControlMain.Location = new System.Drawing.Point(0, 0);
             this.tabControlMain.Name = "tabControlMain";
             this.tabControlMain.SelectedIndex = 0;
-            this.tabControlMain.Size = new System.Drawing.Size(475, 477);
+            this.tabControlMain.Size = new System.Drawing.Size(475, 483);
             this.tabControlMain.TabIndex = 0;
             // 
             // tabPagePrivs
@@ -1038,7 +1212,7 @@
             this.tabPagePrivs.Location = new System.Drawing.Point(4, 22);
             this.tabPagePrivs.Name = "tabPagePrivs";
             this.tabPagePrivs.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPagePrivs.Size = new System.Drawing.Size(467, 451);
+            this.tabPagePrivs.Size = new System.Drawing.Size(467, 457);
             this.tabPagePrivs.TabIndex = 7;
             this.tabPagePrivs.Text = "Privileges";
             this.tabPagePrivs.UseVisualStyleBackColor = true;
@@ -1053,10 +1227,42 @@
             this.listViewPrivs.FullRowSelect = true;
             this.listViewPrivs.Location = new System.Drawing.Point(3, 3);
             this.listViewPrivs.Name = "listViewPrivs";
-            this.listViewPrivs.Size = new System.Drawing.Size(461, 445);
+            this.listViewPrivs.Size = new System.Drawing.Size(461, 451);
             this.listViewPrivs.TabIndex = 1;
             this.listViewPrivs.UseCompatibleStateImageBehavior = false;
             this.listViewPrivs.View = System.Windows.Forms.View.Details;
+            // 
+            // contextMenuStripPrivileges
+            // 
+            this.contextMenuStripPrivileges.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.enablePrivilegeToolStripMenuItem,
+            this.removePrivilegeToolStripMenuItem,
+            this.selectAllPrivsToolStripMenuItem});
+            this.contextMenuStripPrivileges.Name = "contextMenuStripPrivileges";
+            this.contextMenuStripPrivileges.Size = new System.Drawing.Size(166, 70);
+            this.contextMenuStripPrivileges.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStripPrivileges_Opening);
+            // 
+            // enablePrivilegeToolStripMenuItem
+            // 
+            this.enablePrivilegeToolStripMenuItem.Name = "enablePrivilegeToolStripMenuItem";
+            this.enablePrivilegeToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.enablePrivilegeToolStripMenuItem.Text = "Enable Privilege";
+            this.enablePrivilegeToolStripMenuItem.Click += new System.EventHandler(this.enablePrivilegeToolStripMenuItem_Click);
+            // 
+            // removePrivilegeToolStripMenuItem
+            // 
+            this.removePrivilegeToolStripMenuItem.Name = "removePrivilegeToolStripMenuItem";
+            this.removePrivilegeToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.removePrivilegeToolStripMenuItem.Text = "Remove Privilege";
+            this.removePrivilegeToolStripMenuItem.Click += new System.EventHandler(this.removePrivilegeToolStripMenuItem_Click);
+            // 
+            // selectAllPrivsToolStripMenuItem
+            // 
+            this.selectAllPrivsToolStripMenuItem.Name = "selectAllPrivsToolStripMenuItem";
+            this.selectAllPrivsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
+            this.selectAllPrivsToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.selectAllPrivsToolStripMenuItem.Text = "Select All";
+            this.selectAllPrivsToolStripMenuItem.Click += new System.EventHandler(this.selectAllToolStripMenuItem_Click);
             // 
             // tabPageRestricted
             // 
@@ -1064,7 +1270,7 @@
             this.tabPageRestricted.Location = new System.Drawing.Point(4, 22);
             this.tabPageRestricted.Name = "tabPageRestricted";
             this.tabPageRestricted.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPageRestricted.Size = new System.Drawing.Size(467, 451);
+            this.tabPageRestricted.Size = new System.Drawing.Size(467, 457);
             this.tabPageRestricted.TabIndex = 3;
             this.tabPageRestricted.Text = "Restricted SIDs";
             this.tabPageRestricted.UseVisualStyleBackColor = true;
@@ -1078,7 +1284,7 @@
             this.listViewRestrictedSids.FullRowSelect = true;
             this.listViewRestrictedSids.Location = new System.Drawing.Point(3, 3);
             this.listViewRestrictedSids.Name = "listViewRestrictedSids";
-            this.listViewRestrictedSids.Size = new System.Drawing.Size(461, 445);
+            this.listViewRestrictedSids.Size = new System.Drawing.Size(461, 451);
             this.listViewRestrictedSids.TabIndex = 1;
             this.listViewRestrictedSids.UseCompatibleStateImageBehavior = false;
             this.listViewRestrictedSids.View = System.Windows.Forms.View.Details;
@@ -1103,7 +1309,7 @@
             this.tabPageAppContainer.Location = new System.Drawing.Point(4, 22);
             this.tabPageAppContainer.Name = "tabPageAppContainer";
             this.tabPageAppContainer.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPageAppContainer.Size = new System.Drawing.Size(467, 451);
+            this.tabPageAppContainer.Size = new System.Drawing.Size(467, 457);
             this.tabPageAppContainer.TabIndex = 4;
             this.tabPageAppContainer.Text = "App Container";
             this.tabPageAppContainer.UseVisualStyleBackColor = true;
@@ -1156,7 +1362,7 @@
             this.tabPageMisc.Location = new System.Drawing.Point(4, 22);
             this.tabPageMisc.Name = "tabPageMisc";
             this.tabPageMisc.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPageMisc.Size = new System.Drawing.Size(467, 451);
+            this.tabPageMisc.Size = new System.Drawing.Size(467, 457);
             this.tabPageMisc.TabIndex = 6;
             this.tabPageMisc.Text = "Misc";
             this.tabPageMisc.UseVisualStyleBackColor = true;
@@ -1164,37 +1370,22 @@
             // tabPageOperations
             // 
             this.tabPageOperations.Controls.Add(groupBox4);
-            this.tabPageOperations.Controls.Add(groupBox3);
+            this.tabPageOperations.Controls.Add(groupBoxSafer);
             this.tabPageOperations.Controls.Add(groupBox1);
             this.tabPageOperations.Controls.Add(groupBoxDuplicate);
             this.tabPageOperations.Location = new System.Drawing.Point(4, 22);
             this.tabPageOperations.Name = "tabPageOperations";
             this.tabPageOperations.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPageOperations.Size = new System.Drawing.Size(467, 451);
+            this.tabPageOperations.Size = new System.Drawing.Size(467, 457);
             this.tabPageOperations.TabIndex = 5;
             this.tabPageOperations.Text = "Operations";
             this.tabPageOperations.UseVisualStyleBackColor = true;
-            // 
-            // contextMenuStripPrivileges
-            // 
-            this.contextMenuStripPrivileges.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.enablePrivilegeToolStripMenuItem});
-            this.contextMenuStripPrivileges.Name = "contextMenuStripPrivileges";
-            this.contextMenuStripPrivileges.Size = new System.Drawing.Size(158, 26);
-            this.contextMenuStripPrivileges.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStripPrivileges_Opening);
-            // 
-            // enablePrivilegeToolStripMenuItem
-            // 
-            this.enablePrivilegeToolStripMenuItem.Name = "enablePrivilegeToolStripMenuItem";
-            this.enablePrivilegeToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
-            this.enablePrivilegeToolStripMenuItem.Text = "Enable Privilege";
-            this.enablePrivilegeToolStripMenuItem.Click += new System.EventHandler(this.enablePrivilegeToolStripMenuItem_Click);
             // 
             // TokenForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(475, 477);
+            this.ClientSize = new System.Drawing.Size(475, 483);
             this.Controls.Add(this.tabControlMain);
             this.MinimumSize = new System.Drawing.Size(491, 516);
             this.Name = "TokenForm";
@@ -1206,6 +1397,7 @@
             groupBoxToken.ResumeLayout(false);
             groupBoxToken.PerformLayout();
             tabPageGroups.ResumeLayout(false);
+            this.contextMenuStripGroups.ResumeLayout(false);
             tabPageDefaultDacl.ResumeLayout(false);
             tabPageDefaultDacl.PerformLayout();
             groupBoxDuplicate.ResumeLayout(false);
@@ -1214,18 +1406,18 @@
             groupBox1.PerformLayout();
             groupBox2.ResumeLayout(false);
             groupBox2.PerformLayout();
-            groupBox3.ResumeLayout(false);
-            groupBox3.PerformLayout();
+            groupBoxSafer.ResumeLayout(false);
+            groupBoxSafer.PerformLayout();
             groupBox4.ResumeLayout(false);
             groupBox4.PerformLayout();
             this.tabControlMain.ResumeLayout(false);
             this.tabPagePrivs.ResumeLayout(false);
+            this.contextMenuStripPrivileges.ResumeLayout(false);
             this.tabPageRestricted.ResumeLayout(false);
             this.tabPageAppContainer.ResumeLayout(false);
             this.tabPageAppContainer.PerformLayout();
             this.tabPageMisc.ResumeLayout(false);
             this.tabPageOperations.ResumeLayout(false);
-            this.contextMenuStripPrivileges.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -1291,5 +1483,21 @@
         private System.Windows.Forms.ListView listViewPrivs;
         private System.Windows.Forms.ContextMenuStrip contextMenuStripPrivileges;
         private System.Windows.Forms.ToolStripMenuItem enablePrivilegeToolStripMenuItem;
+        private System.Windows.Forms.TextBox txtIsElevated;
+        private System.Windows.Forms.ToolStripMenuItem selectAllPrivsToolStripMenuItem;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStripGroups;
+        private System.Windows.Forms.ToolStripMenuItem enableGroupToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem selectAllGroupsToolStripMenuItem;
+        private System.Windows.Forms.Button btnCreateSandbox;
+        private System.Windows.Forms.Button btnImpersonate;
+        private System.Windows.Forms.ToolTip toolTip;
+        private System.Windows.Forms.CheckBox checkBoxUseWmi;
+        private System.Windows.Forms.ToolStripMenuItem removePrivilegeToolStripMenuItem;
+        private System.Windows.Forms.Label llbSecurityAttributes;
+        private System.Windows.Forms.TreeView treeViewSecurityAttributes;
+        private System.Windows.Forms.Button btnToggleUIAccess;
+        private System.Windows.Forms.TextBox txtHandleAccess;
+        private System.Windows.Forms.Button btnToggleVirtualizationEnabled;
+        private System.Windows.Forms.CheckBox checkBoxUseNetLogon;
     }
 }

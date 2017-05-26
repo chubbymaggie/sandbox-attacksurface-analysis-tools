@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,13 +12,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using HandleUtils;
-using Microsoft.Win32;
 using NDesk.Options;
+using NtApiDotNet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Security;
 
 namespace CheckRegistryAccess
 {
@@ -27,9 +25,9 @@ namespace CheckRegistryAccess
         static bool _recursive = false;
         static bool _print_sddl = false;
         static bool _show_write_only = false;
-        static HashSet<string> _walked = new HashSet<string>();        
-        static ObjectTypeInfo _type;
-        static NativeHandle _token;
+        static HashSet<string> _walked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);        
+        static NtType _type;
+        static NtToken _token;
         static uint _key_rights = 0;
 
         static void ShowHelp(OptionSet p)
@@ -38,6 +36,7 @@ namespace CheckRegistryAccess
             Console.WriteLine();
             Console.WriteLine("Options:");
             p.WriteOptionDescriptions(Console.Out);
+            Console.WriteLine(@"Key names can be in win32 form (hkey_local_machine\blah) or native (\Registry\Machine\blah");
         }
 
         static string AccessMaskToString(uint granted_access)
@@ -47,95 +46,75 @@ namespace CheckRegistryAccess
                 return "Full Permission";
             }
 
-            KeyAccessRights rights = (KeyAccessRights)(granted_access & 0xFFFF);
-            StandardAccessRights standard = (StandardAccessRights)(granted_access & 0x1F0000);
-            return String.Join(", ", new string[] { standard.ToString(), rights.ToString() });
+            return ((KeyAccessRights)granted_access).ToString();
         }
 
-        static void CheckAccess(string name)
+        static void CheckAccess(NtKey key)
         {
-            try
-            {                
-                byte[] sd = NativeBridge.GetNamedSecurityDescriptor(MapKeyName(name), "key");
-                if (sd.Length > 0)
-                {
-                    uint granted_access = 0;
-
-                    if (_key_rights != 0)
-                    {
-                        granted_access = NativeBridge.GetAllowedAccess(_token, _type, _key_rights, sd);
-                    }
-                    else
-                    {
-                        granted_access = NativeBridge.GetMaximumAccess(_token, _type, sd);
-                    }
-
-                    if (granted_access != 0)
-                    {
-                        // As we can get all the righs for the key get maximum
-                        if (_key_rights != 0)
-                        {
-                            granted_access = NativeBridge.GetMaximumAccess(_token, _type, sd);
-                        }
-
-                        if (!_show_write_only || _type.HasWritePermission(granted_access))
-                        {
-                            Console.WriteLine("{0} : {1:X08} {2}", name, granted_access, AccessMaskToString(granted_access));
-                            if (_print_sddl)
-                            {
-                                Console.WriteLine("{0}", NativeBridge.GetStringSecurityDescriptor(sd));
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        static void DumpKey(RegistryKey key)
-        {            
-            if (_walked.Contains(key.Name.ToLower()))
+            if (!key.IsAccessGranted(KeyAccessRights.ReadControl))
             {
                 return;
             }
 
-            _walked.Add(key.Name.ToLower());
+            SecurityDescriptor sd = key.SecurityDescriptor;
+            uint granted_access = 0;
+
+            if (_key_rights != 0)
+            {
+                granted_access = NtSecurity.GetAllowedAccess(_token, _type, _key_rights, sd.ToByteArray());
+            }
+            else
+            {
+                granted_access = NtSecurity.GetMaximumAccess(_token, _type, sd.ToByteArray());
+            }
+
+            if (granted_access != 0)
+            {
+                // As we can get all the rights for the key get maximum
+                if (_key_rights != 0)
+                {
+                    granted_access = NtSecurity.GetMaximumAccess(_token, _type, sd.ToByteArray());
+                }
+
+                if (!_show_write_only || _type.HasWritePermission(granted_access))
+                {
+                    Console.WriteLine("{0} : {1:X08} {2}", key.FullPath, granted_access, AccessMaskToString(granted_access));
+                    if (_print_sddl)
+                    {
+                        Console.WriteLine("{0}", sd.ToSddl());
+                    }
+                }
+            }
+        }
+
+        static void DumpKey(NtKey key)
+        {
+            string key_name = key.FullPath;
+            if (_walked.Contains(key_name))
+            {
+                return;
+            }
+
+            _walked.Add(key_name);
 
             try
             {
-                CheckAccess(key.Name);
+                CheckAccess(key);
 
-                if (_recursive)
+                if (_recursive && key.IsAccessGranted(KeyAccessRights.EnumerateSubKeys))
                 {
-                    foreach(string name in key.GetSubKeyNames())                    
+                    using (var keys = key.QueryAccessibleKeys(KeyAccessRights.MaximumAllowed))
                     {
-                        RegistryKey subkey = null;
-                        try
+                        foreach (NtKey subkey in keys)
                         {
-                            subkey = key.OpenSubKey(name, false);
-                            if (subkey != null)
-                            {
-                                DumpKey(subkey);
-                            }
-                        }
-                        catch (SecurityException)
-                        {
-                        }
-                        finally
-                        {
-                            if (subkey != null)
-                            {
-                                subkey.Close();
-                            }
+                            DumpKey(subkey);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Error dumping key {0} {1}", key.Name, ex.Message);
+                Console.Error.WriteLine("Error dumping key {0} {1}", key.FullPath, ex.Message);
             }
         }
 
@@ -152,16 +131,16 @@ namespace CheckRegistryAccess
             switch (nameparts[0].ToLower())
             {
                 case "hkey_local_machine":
-                    mapped = "MACHINE";
+                    mapped = @"\Registry\MACHINE";
                     break;
                 case "hkey_current_user":
-                    mapped = "CURRENT_USER";
+                    mapped = @"\Registry\User\" + NtToken.CurrentUser.Sid.ToString();
                     break;
                 case "hkey_users":
-                    mapped = "USERS";
+                    mapped = @"\Registry\User";
                     break;
                 case "hkey_classes_root":
-                    mapped = "CLASSES_ROOT";
+                    mapped = @"\Registry\MACHINE\Software\Classes";
                     break;
                 default:
                     throw new ArgumentException(String.Format("Invalid root keyname {0}", nameparts[0]));
@@ -177,49 +156,14 @@ namespace CheckRegistryAccess
             }
         }
 
-        static RegistryKey OpenKey(string name)
+        static NtKey OpenKey(string name)
         {
-            RegistryHive hive = RegistryHive.LocalMachine;
-
-            string[] nameparts = name.Split(new char[] { '\\' }, 2);
-
-            if (nameparts.Length == 0)
+            if (!name.StartsWith(@"\"))
             {
-                throw new ArgumentException("Invalid key name");
+                name = MapKeyName(name);
             }
 
-            switch (nameparts[0].ToLower())
-            {
-                case "hkey_local_machine":
-                    hive = RegistryHive.LocalMachine;
-                    break;
-                case "hkey_current_user":
-                    hive = RegistryHive.CurrentUser;
-                    break;
-                case "hkey_users":
-                    hive = RegistryHive.Users;
-                    break;
-                case "hkey_classes_root":
-                    hive = RegistryHive.ClassesRoot;
-                    break;
-                default:
-                    throw new ArgumentException(String.Format("Invalid root keyname {0}", nameparts[0]));
-            }
-
-            RegistryKey rootKey = RegistryKey.OpenBaseKey(hive, RegistryView.Default);
-
-            if ((nameparts.Length == 1) || (String.IsNullOrWhiteSpace(nameparts[1])))
-            {
-                return rootKey;
-            }
-            else
-            {
-                RegistryKey ret = rootKey.OpenSubKey(nameparts[1], false);
-
-                rootKey.Close();
-
-                return ret;
-            }
+            return NtKey.Open(name, null, KeyAccessRights.MaximumAllowed);
         }
 
         static uint ParseRight(string name, Type enumtype)
@@ -233,54 +177,50 @@ namespace CheckRegistryAccess
 
             int pid = Process.GetCurrentProcess().Id;
 
-            OptionSet opts = new OptionSet() {
+            try
+            {
+                OptionSet opts = new OptionSet() {
                         { "r", "Recursive tree directory listing",  
                             v => _recursive = v != null },                                  
                         { "sddl", "Print full SDDL security descriptors", v => _print_sddl = v != null },
                         { "p|pid=", "Specify a PID of a process to impersonate when checking", v => pid = int.Parse(v.Trim()) },
                         { "w", "Show only write permissions granted", v => _show_write_only = v != null },
-                        { "k=", String.Format("Filter on a specific key right [{0}]", 
+                        { "k=", String.Format("Filter on a specific right [{0}]", 
                             String.Join(",", Enum.GetNames(typeof(KeyAccessRights)))), v => _key_rights |= ParseRight(v, typeof(KeyAccessRights)) },  
-                        { "s=", String.Format("Filter on a standard right [{0}]", 
-                            String.Join(",", Enum.GetNames(typeof(StandardAccessRights)))), v => _key_rights |= ParseRight(v, typeof(StandardAccessRights)) },  
                         { "x=", "Specify a base path to exclude from recursive search", v => _walked.Add(v.ToLower()) },
                         { "h|help",  "show this message and exit", v => show_help = v != null },
                     };
 
-            List<string> paths = opts.Parse(args);
+                List<string> paths = opts.Parse(args);
 
-            if (show_help || (paths.Count == 0))
-            {
-                ShowHelp(opts);
-            }
-            else
-            {
-                try
+                if (show_help || (paths.Count == 0))
                 {
-                    _type = ObjectTypeInfo.GetTypeByName("key");
-                    _token = NativeBridge.OpenProcessToken(pid);                    
+                    ShowHelp(opts);
+                }
+                else
+                {
+                    _type = NtType.GetTypeByName("key");
+                    _token = NtToken.OpenProcessToken(pid);
 
                     foreach (string path in paths)
                     {
-                        RegistryKey key = OpenKey(path);
-
-                        if (key != null)
+                        try
                         {
-                            try
+                            using (NtKey key = OpenKey(path))
                             {
                                 DumpKey(key);
                             }
-                            finally
-                            {
-                                key.Close();
-                            }
-                        }                        
+                        }
+                        catch (NtException ex)
+                        {
+                            Console.WriteLine("Error opening key: {0} - {1}", path, ex.Message);
+                        }
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
     }

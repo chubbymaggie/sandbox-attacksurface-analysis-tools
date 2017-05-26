@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,8 +12,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using HandleUtils;
+using SandboxAnalysisUtils;
 using NDesk.Options;
+using NtApiDotNet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,8 +27,8 @@ namespace CheckObjectManagerAccess
         static bool _print_sddl = false;
         static bool _show_write_only = false;
         static HashSet<string> _walked = new HashSet<string>();        
-        static NativeHandle _token;
-        static int _dir_rights = 0;
+        static NtToken _token;
+        static uint _dir_rights = 0;
         static HashSet<string> _type_filter = new HashSet<string>();
        
         static void ShowHelp(OptionSet p)
@@ -38,7 +39,7 @@ namespace CheckObjectManagerAccess
             p.WriteOptionDescriptions(Console.Out);
         }
 
-        static Type GetTypeAccessRights(ObjectTypeInfo type)
+        static Type GetTypeAccessRights(NtType type)
         {
             switch (type.Name.ToLower())
             {
@@ -53,7 +54,7 @@ namespace CheckObjectManagerAccess
                 case "semaphore":
                     return typeof(SemaphoreAccessRights);
                 case "job":
-                    return typeof(JobObjectAccessRights);
+                    return typeof(JobAccessRights);
                 case "symboliclink":
                     return typeof(SymbolicLinkAccessRights);
                 default:
@@ -61,21 +62,17 @@ namespace CheckObjectManagerAccess
             }
         }
 
-        static string AccessMaskToString(ObjectTypeInfo type, uint granted_access)
+        static string AccessMaskToString(NtType type, uint granted_access)
         {
             if (type.HasFullPermission(granted_access))
             {
                 return "Full Permission";
             }
 
-            Object rights = Enum.ToObject(GetTypeAccessRights(type), granted_access & 0xFFFF);
-            
-            StandardAccessRights standard = (StandardAccessRights)(granted_access & 0x1F0000);            
-
-            return String.Join(", ", new string[] { standard.ToString(), rights.ToString() });
+            return NtObject.AccessRightsToString(GetTypeAccessRights(type), type.MapGenericRights(granted_access));
         }
 
-        static void CheckAccess(string path, byte[] sd, ObjectTypeInfo type)
+        static void CheckAccess(string path, byte[] sd, NtType type)
         {
             try
             {
@@ -93,19 +90,19 @@ namespace CheckObjectManagerAccess
 
                     if (_dir_rights != 0)
                     {
-                        granted_access = NativeBridge.GetAllowedAccess(_token, type, (uint)_dir_rights, sd);
+                        granted_access = NtSecurity.GetAllowedAccess(_token, type, (uint)_dir_rights, sd);
                     }
                     else
                     {
-                        granted_access = NativeBridge.GetMaximumAccess(_token, type, sd);
+                        granted_access = NtSecurity.GetMaximumAccess(_token, type, sd);
                     }
 
                     if (granted_access != 0)
                     {
-                        // As we can get all the righs for the key get maximum
+                        // As we can get all the rights for the directory get maximum
                         if (_dir_rights != 0)
                         {
-                            granted_access = NativeBridge.GetMaximumAccess(_token, type, sd);
+                            granted_access = NtSecurity.GetMaximumAccess(_token, type, sd);
                         }
 
                         if (!_show_write_only || type.HasWritePermission(granted_access))
@@ -113,7 +110,7 @@ namespace CheckObjectManagerAccess
                             Console.WriteLine("<{0}> {1} : {2:X08} {3}", type.Name, path, granted_access, AccessMaskToString(type, granted_access));
                             if (_print_sddl)
                             {
-                                Console.WriteLine("{0}", NativeBridge.GetStringSecurityDescriptor(sd));
+                                Console.WriteLine("{0}", NtSecurity.SecurityDescriptorToSddl(sd, SecurityInformation.AllBasic));
                             }
                         }
                     }
@@ -135,7 +132,7 @@ namespace CheckObjectManagerAccess
 
             try
             {
-                CheckAccess(dir.FullPath, dir.SecurityDescriptor, ObjectTypeInfo.GetTypeByName("Directory"));
+                CheckAccess(dir.FullPath, dir.SecurityDescriptor, NtType.GetTypeByName("Directory"));
 
                 if (_recursive)
                 {
@@ -145,11 +142,14 @@ namespace CheckObjectManagerAccess
                         {                            
                             if (entry.IsDirectory)
                             {
-                                DumpDirectory(ObjectNamespace.OpenDirectory(entry.FullPath));
+                                using (ObjectDirectory newdir = ObjectNamespace.OpenDirectory(dir, entry.ObjectName))
+                                {
+                                    DumpDirectory(newdir);
+                                }
                             }
                             else
                             {                                
-                                CheckAccess(entry.FullPath, entry.SecurityDescriptor, ObjectTypeInfo.GetTypeByName(entry.TypeName));
+                                CheckAccess(entry.FullPath, entry.SecurityDescriptor, NtType.GetTypeByName(entry.TypeName));
                             }
                         }
                         catch (Exception ex)
@@ -165,55 +165,53 @@ namespace CheckObjectManagerAccess
             }
         }
 
-        static int ParseRight(string name, Type enumtype)
+        static uint ParseRight(string name, Type enumtype)
         {
-            return (int)Enum.Parse(enumtype, name, true);
+            return (uint)Enum.Parse(enumtype, name, true);
         }
 
         static void Main(string[] args)
         {
             bool show_help = false;
 
-            int pid = Process.GetCurrentProcess().Id;            
-
-            OptionSet opts = new OptionSet() {
-                        { "r", "Recursive tree directory listing",  
-                            v => _recursive = v != null },                                  
-                        { "sddl", "Print full SDDL security descriptors", v => _print_sddl = v != null },
-                        { "p|pid=", "Specify a PID of a process to impersonate when checking", v => pid = int.Parse(v.Trim()) },
-                        { "w", "Show only write permissions granted", v => _show_write_only = v != null },
-                        { "k=", String.Format("Filter on a specific directory right [{0}]", 
-                            String.Join(",", Enum.GetNames(typeof(DirectoryAccessRights)))), v => _dir_rights |= ParseRight(v, typeof(DirectoryAccessRights)) },  
-                        { "s=", String.Format("Filter on a standard right [{0}]", 
-                            String.Join(",", Enum.GetNames(typeof(StandardAccessRights)))), v => _dir_rights |= ParseRight(v, typeof(StandardAccessRights)) },  
-                        { "x=", "Specify a base path to exclude from recursive search", v => _walked.Add(v.ToLower()) },
-                        { "t=", "Specify a type of object to include", v => _type_filter.Add(v.ToLower()) },
-                        { "h|help",  "show this message and exit", v => show_help = v != null },
-                    };
-
-            List<string> paths = opts.Parse(args);
-
-            if (show_help || (paths.Count == 0))
+            int pid = Process.GetCurrentProcess().Id;
+            try
             {
-                ShowHelp(opts);
-            }
-            else
-            {
-                try
-                {                    
-                    _token = NativeBridge.OpenProcessToken(pid);
+                OptionSet opts = new OptionSet() {
+                            { "r", "Recursive tree directory listing",  
+                                v => _recursive = v != null },                                  
+                            { "sddl", "Print full SDDL security descriptors", v => _print_sddl = v != null },
+                            { "p|pid=", "Specify a PID of a process to impersonate when checking", v => pid = int.Parse(v.Trim()) },
+                            { "w", "Show only write permissions granted", v => _show_write_only = v != null },
+                            { "k=", String.Format("Filter on a specific directory right [{0}]", 
+                                String.Join(",", Enum.GetNames(typeof(DirectoryAccessRights)))), v => _dir_rights |= ParseRight(v, typeof(DirectoryAccessRights)) },  
+                            { "x=", "Specify a base path to exclude from recursive search", v => _walked.Add(v.ToLower()) },
+                            { "t=", "Specify a type of object to include", v => _type_filter.Add(v.ToLower()) },
+                            { "h|help",  "show this message and exit", v => show_help = v != null },
+                        };
+
+                List<string> paths = opts.Parse(args);
+
+                if (show_help || (paths.Count == 0))
+                {
+                    ShowHelp(opts);
+                }
+                else
+                {
+                    _token = NtToken.OpenProcessToken(pid);
 
                     foreach (string path in paths)
                     {
-                        ObjectDirectory dir = ObjectNamespace.OpenDirectory(path);
-
-                        DumpDirectory(dir);                                                    
+                        using (ObjectDirectory dir = ObjectNamespace.OpenDirectory(null, path))
+                        {
+                            DumpDirectory(dir);
+                        }
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
     }

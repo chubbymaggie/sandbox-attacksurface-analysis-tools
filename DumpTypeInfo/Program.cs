@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,7 +12,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+using SandboxAnalysisUtils;
 using NDesk.Options;
+using NtApiDotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,23 +32,23 @@ namespace DumpTypeInfo
             p.WriteOptionDescriptions(Console.Out);
         }
 
-        static void DumpGenericTypeInfo(IEnumerable<ObjectTypeInfo> types)
+        static void DumpGenericTypeInfo(IEnumerable<NtType> types)
         {
-            Console.WriteLine("{0,25}   READ     WRITE   EXECUTE   ALL   ", "Name");
-            Console.WriteLine("{0}", new String('-', 61));
+            Console.WriteLine("{0,25}   READ     WRITE   EXECUTE   ALL     VALID ", "Name");
+            Console.WriteLine("{0}", new String('-', 70));
 
-            foreach (ObjectTypeInfo type in types)
+            foreach (NtType type in types)
             {
-                Console.WriteLine("{0,25} {1:X08} {2:X08} {3:X08} {4:X08}", type.Name, type.GenericReadMapping,
-                    type.GenericWriteMapping, type.GenericExecuteMapping, type.GenericAllMapping);
+                Console.WriteLine("{0,25} {1:X08} {2:X08} {3:X08} {4:X08} {5:X08}", type.Name, type.GenericMapping.GenericRead,
+                    type.GenericMapping.GenericWrite, type.GenericMapping.GenericExecute, type.GenericMapping.GenericAll, type.ValidAccess);
             }
         }
 
-        static void DumpVerboseTypeInfo(IEnumerable<ObjectTypeInfo> types)
+        static void DumpVerboseTypeInfo(IEnumerable<NtType> types)
         {
-            PropertyInfo[] props = typeof(ObjectTypeInfo).GetProperties();
+            PropertyInfo[] props = typeof(NtType).GetProperties();
 
-            foreach (ObjectTypeInfo type in types)
+            foreach (NtType type in types)
             {
                 string name = String.Format("{0}", type.Name);
                 Console.WriteLine(name);
@@ -96,7 +98,7 @@ namespace DumpTypeInfo
             {
                 try
                 {
-                    IEnumerable<ObjectTypeInfo> types = ObjectTypeInfo.GetTypes();
+                    IEnumerable<NtType> types = NtType.GetTypes();
 
                     if (typeFilter.Count > 0)
                     {
@@ -115,7 +117,7 @@ namespace DumpTypeInfo
 
                     if (name_only)
                     {
-                        foreach (ObjectTypeInfo type in types)
+                        foreach (NtType type in types)
                         {
                             Console.WriteLine("{0}", type.Name);
                         }

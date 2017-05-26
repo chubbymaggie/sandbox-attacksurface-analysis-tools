@@ -4,7 +4,7 @@
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
 //
-//  http ://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
 //  Unless required by applicable law or agreed to in writing, software
 //  distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,11 +12,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using HandleUtils;
 using NDesk.Options;
+using NtApiDotNet;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -31,63 +30,52 @@ namespace CheckProcessAccess
         static bool _dump_token;
         static bool _print_sddl;
         static bool _named_process;
-
-        class TokenEntry
-        {
-            public TokenEntry(NativeHandle handle)
-            {
-                Handle = handle;
-                SecurityDescriptor = NativeBridge.GetSecurityDescriptorForHandle(handle);
-                StringSecurityDescriptor = NativeBridge.GetStringSecurityDescriptor(SecurityDescriptor);
-                UserName = NativeBridge.GetUserNameForToken(handle);
-            }
-
-            public string UserName { get; private set; }
-            public NativeHandle Handle { get; private set; }
-            public byte[] SecurityDescriptor { get; private set; }
-            public string StringSecurityDescriptor { get; private set; }
-        }
+        static bool _all_threads;        
 
         class ThreadEntry
         {
-            public ThreadEntry(NativeHandle handle)
+            public ThreadEntry(NtThread handle)
             {
                 Handle = handle;
-                SecurityDescriptor = NativeBridge.GetSecurityDescriptorForHandle(handle);
-                StringSecurityDescriptor = NativeBridge.GetStringSecurityDescriptor(SecurityDescriptor);
-                Tid = NativeBridge.GetTidForThread(handle);
-                NativeHandle token = NativeBridge.OpenThreadToken(handle);
-                if (token != null)
+                Tid = handle.ThreadId;
+                try
                 {
-                    Token = new TokenEntry(token);
+                    Token = handle.OpenToken();
+                }
+                catch
+                {
                 }
             }
 
-            public NativeHandle Handle { get; private set; }
+            public NtThread Handle { get; private set; }
             public int Tid { get; private set; }
-            public byte[] SecurityDescriptor { get; private set; }
-            public string StringSecurityDescriptor { get; private set; }
-            public TokenEntry Token { get; private set; }
-
-            public string GetGrantedAccess()
-            {
-                return NativeBridge.MapAccessToString(NativeBridge.GetGrantedAccess(Handle), typeof(ThreadAccessRights));
-            }
+            public NtToken Token { get; private set; }
         }
 
         class ProcessEntry
         {
-            public ProcessEntry(NativeHandle handle)
+            public ProcessEntry(NtProcess handle) : this(handle, null)
+            {
+            }
+
+            public ProcessEntry(NtProcess handle, NtThread[] threads)
             {
                 Handle = handle;
-                Pid = NativeBridge.GetPidForProcess(handle);
-                Threads = NativeBridge.GetThreadsForProcess(handle).Select(h => new ThreadEntry(h)).ToArray();
+
+                if (handle.IsAccessGranted(ProcessAccessRights.QueryInformation) || handle.IsAccessGranted(ProcessAccessRights.QueryLimitedInformation))
+                {
+                    Pid = handle.ProcessId;
+                }
+
+                if (threads == null)
+                {
+                    threads = handle.GetThreads(ThreadAccessRights.MaximumAllowed).ToArray();
+                }
+
+                Threads = threads.Select(h => new ThreadEntry(h)).ToArray();
                 Array.Sort(Threads, (a, b) => a.Tid - b.Tid);
-
-                SecurityDescriptor = NativeBridge.GetSecurityDescriptorForHandle(handle);
-                StringSecurityDescriptor = NativeBridge.GetStringSecurityDescriptor(SecurityDescriptor);
-
                 ImagePath = String.Empty;
+                Name = String.Empty;
                 if (Pid == 0)
                 {
                     Name = "Idle";
@@ -98,30 +86,83 @@ namespace CheckProcessAccess
                 }
                 else
                 {
-                    ImagePath = NativeBridge.GetProcessPath(handle);
+                    if (Handle.IsAccessGranted(ProcessAccessRights.QueryLimitedInformation))
+                    {
+                        try
+                        {
+                            ImagePath = Handle.GetImageFilePath(false);
+                            Name = Path.GetFileNameWithoutExtension(ImagePath);
+                        }
+                        catch (NtException)
+                        {
+                        }
+                    }
+                }
+
+                CommandLine = String.Empty;
+                if (Handle.IsAccessGranted(ProcessAccessRights.QueryInformation) || Handle.IsAccessGranted(ProcessAccessRights.QueryLimitedInformation))
+                {
+                    try
+                    {
+                        Token = Handle.OpenToken();
+                    }
+                    catch (NtException)
+                    {
+                    }
+
+                    try
+                    {
+                        CommandLine = Handle.CommandLine;
+                    }
+                    catch (NtException)
+                    {
+                    }
+                }
+            }
+
+            // Dummy constructor, used when we can't open the process for the thread.
+            public ProcessEntry(int pid, NtThread[] threads)
+            {
+                Pid = pid;
+                Threads = threads.Select(h => new ThreadEntry(h)).ToArray();
+                Array.Sort(Threads, (a, b) => a.Tid - b.Tid);
+
+                CommandLine = String.Empty;
+                ImagePath = "Unknown";
+                if (Pid == 0)
+                {
+                    Name = "Idle";
+                }
+                else if (Pid == 4)
+                {
+                    Name = "System";
+                }
+                else
+                {
+                    ImagePath = "Unknown";
                     Name = Path.GetFileNameWithoutExtension(ImagePath);
                 }
+            }
 
-                NativeHandle token = NativeBridge.OpenProcessToken(handle);
-                if (token != null)
+            public string GetGrantedAccessString()
+            {
+                if (Handle != null)
                 {
-                    Token = new TokenEntry(token);
+                    return Handle.GetGrantedAccessString();
+                }
+                else
+                {
+                    return String.Empty;
                 }
             }
 
-            public NativeHandle Handle { get; private set; }
+            public NtProcess Handle { get; private set; }
             public ThreadEntry[] Threads { get; private set; }
             public int Pid { get; private set; }
-            public byte[] SecurityDescriptor { get; private set; }
-            public string StringSecurityDescriptor { get; private set; }
             public string Name { get; private set; }
             public string ImagePath { get; private set; }
-            public TokenEntry Token { get; private set; }
-
-            public string GetGrantedAccess()
-            {
-                return NativeBridge.MapAccessToString(NativeBridge.GetGrantedAccess(Handle), typeof(ProcessAccessRights));
-            }
+            public NtToken Token { get; private set; }
+            public string CommandLine { get; private set; }
         }
         
         static void ShowHelp(OptionSet p)
@@ -146,6 +187,7 @@ namespace CheckProcessAccess
                         { "i", "Use an indentify level token when impersonating", v => _identify_only = v != null },                        
                         { "t", "Dump accessible threads for process", v => _dump_threads = v != null },                        
                         { "k", "Dump tokens for accessible objects", v => _dump_token = v != null },
+                        { "a", "Start with all accessible threads instead of processes", v => _dump_threads = _all_threads = v != null },
                         { "sddl", "Dump SDDL strings for objects", v => _print_sddl = v != null },
                         { "h|help",  "show this message and exit", 
                            v => show_help = v != null },
@@ -161,45 +203,97 @@ namespace CheckProcessAccess
                 {
                     IEnumerable<ProcessEntry> processes = new ProcessEntry[0];
 
-                    if (pids.Count > 0 && !_named_process)
+                    if (_all_threads)
                     {
-                        List<ProcessEntry> procs = new List<ProcessEntry>();
-                        using (ImpersonateProcess imp = NativeBridge.Impersonate(_pid,
-                            _identify_only ? TokenSecurityLevel.Identification : TokenSecurityLevel.Impersonate))
-                        {
-                            foreach (string pid_name in pids)
+                        NtThread[] all_threads = null;
+
+                        using (var imp = NtToken.Impersonate(_pid,
+                           _identify_only ? SecurityImpersonationLevel.Identification : SecurityImpersonationLevel.Impersonation))
+                        {                            
+                            if (pids.Count > 0)
                             {
+                                List<NtThread> ths = new List<NtThread>();                              
+                                foreach (string pid_name in pids)
+                                {
+                                    try
+                                    {
+                                        ths.Add(NtThread.Open(int.Parse(pid_name), ThreadAccessRights.MaximumAllowed));
+                                    }
+                                    catch (NtException ex)
+                                    {
+                                        Console.WriteLine("Error opening tid {0} - {1}", pid_name, ex.Message);
+                                    }
+                                }
+
+                                all_threads = ths.ToArray();
+                            }
+                            else
+                            {
+                                all_threads = NtThread.GetThreads(ThreadAccessRights.MaximumAllowed).ToArray();
+                            }
+
+                            List<ProcessEntry> procs = new List<ProcessEntry>();
+
+                            foreach (var group in all_threads.GroupBy(t => t.ProcessId))
+                            {
+                                ProcessEntry entry = null;
+                                NtThread[] threads = group.ToArray();
                                 try
                                 {
-                                    procs.Add(new ProcessEntry(NativeBridge.OpenProcess(int.Parse(pid_name))));
+                                    entry = new ProcessEntry(NtProcess.Open(group.Key, ProcessAccessRights.MaximumAllowed), threads);
                                 }
-                                catch (Win32Exception ex)
+                                catch (NtException)
                                 {
-                                    Console.WriteLine("Error opening pid {0} - {1}", pid_name, ex.Message);
+                                    entry = new ProcessEntry(group.Key, threads);
                                 }
+                                procs.Add(entry);
                             }
+                            processes = procs;
                         }
-
-                        processes = procs;                        
                     }
                     else
                     {
-                        try
+                        if (pids.Count > 0 && !_named_process)
                         {
-                            using (ImpersonateProcess imp = NativeBridge.Impersonate(_pid,
-                                _identify_only ? TokenSecurityLevel.Identification : TokenSecurityLevel.Impersonate))
+                            List<ProcessEntry> procs = new List<ProcessEntry>();
+                            using (var imp = NtToken.Impersonate(_pid,
+                                _identify_only ? SecurityImpersonationLevel.Identification : SecurityImpersonationLevel.Impersonation))
                             {
-                                processes = NativeBridge.GetProcesses().Select(h => new ProcessEntry(h));
+                                foreach (string pid_name in pids)
+                                {
+                                    try
+                                    {
+                                        procs.Add(new ProcessEntry(NtProcess.Open(int.Parse(pid_name), ProcessAccessRights.MaximumAllowed)));
+                                    }
+                                    catch (NtException ex)
+                                    {
+                                        Console.WriteLine("Error opening pid {0} - {1}", pid_name, ex.Message);
+                                    }
+                                }
                             }
 
-                            if (_named_process && pids.Count > 0)
-                            {
-                                processes = processes.Where(p => pids.Contains(p.Name.ToLower()));
-                            }
+                            processes = procs;
                         }
-                        catch (Win32Exception ex)
+                        else
                         {
-                            Console.WriteLine(ex);
+                            try
+                            {
+                                HashSet<string> names = new HashSet<string>(pids, StringComparer.OrdinalIgnoreCase);
+                                using (var imp = NtToken.Impersonate(_pid,
+                                    _identify_only ? SecurityImpersonationLevel.Identification : SecurityImpersonationLevel.Impersonation))
+                                {
+                                    processes = NtProcess.GetProcesses(ProcessAccessRights.MaximumAllowed).Select(h => new ProcessEntry(h)).ToArray();
+                                }
+
+                                if (_named_process && names.Count > 0)
+                                {
+                                    processes = processes.Where(p => names.Contains(p.Name));
+                                }
+                            }
+                            catch (NtException ex)
+                            {
+                                Console.WriteLine(ex);
+                            }
                         }
                     }
 
@@ -211,37 +305,38 @@ namespace CheckProcessAccess
 
                     foreach (ProcessEntry process in processes)
                     {
-                        Console.WriteLine("{0}: {1} {2}", process.Pid, process.Name, process.GetGrantedAccess());
-                        if (_print_sddl && process.StringSecurityDescriptor.Length > 0)
+                        Console.WriteLine("{0}: {1} {2}", process.Pid, process.Name, process.GetGrantedAccessString());
+                        if (_print_sddl && process.Handle.IsAccessGranted(ProcessAccessRights.ReadControl))
                         {
-                            Console.WriteLine("SDDL: {0}", process.StringSecurityDescriptor);
+                            Console.WriteLine("SDDL: {0}", process.Handle.GetSddl());
                         }
 
                         if (_dump_token && process.Token != null)
                         {
-                            Console.WriteLine("User: {0}", process.Token.UserName);
-                            if (_print_sddl && process.Token.StringSecurityDescriptor.Length > 0)
+                            Console.WriteLine("User: {0}", process.Token.User);
+                            if (_print_sddl && process.Token.IsAccessGranted(TokenAccessRights.ReadControl))
                             {
-                                Console.WriteLine("Token SDDL: {0}", process.Token.StringSecurityDescriptor);
+                                Console.WriteLine("Token SDDL: {0}", process.Token.GetSddl());
                             }
+                            Console.WriteLine("Token Granted Access: {0}", process.Token.GrantedAccess);
                         }
 
                         if (_dump_threads)
                         {
                             foreach (ThreadEntry thread in process.Threads)
                             {
-                                Console.WriteLine("-- Thread {0}: {1}", thread.Tid, thread.GetGrantedAccess());
-                                if (_print_sddl && thread.StringSecurityDescriptor.Length > 0)
+                                Console.WriteLine("-- Thread {0}: {1}", thread.Tid, thread.Handle.GetGrantedAccessString());
+                                if (_print_sddl && thread.Handle.IsAccessGranted(ThreadAccessRights.ReadControl))
                                 {
-                                    Console.WriteLine("---- SDDL: {0}", thread.StringSecurityDescriptor);
+                                    Console.WriteLine("---- SDDL: {0}", thread.Handle.GetSddl());
                                 }
 
                                 if (_dump_token && thread.Token != null)
                                 {                                    
-                                    Console.WriteLine("---- Impersonating {0}", thread.Token.UserName);
-                                    if (_print_sddl && thread.Token.StringSecurityDescriptor.Length > 0)
+                                    Console.WriteLine("---- Impersonating {0}", thread.Token.User);
+                                    if (_print_sddl && thread.Token.IsAccessGranted(TokenAccessRights.ReadControl))
                                     {
-                                        Console.WriteLine("---- Token SDDL: {0}", thread.Token.StringSecurityDescriptor);
+                                        Console.WriteLine("---- Token SDDL: {0}", thread.Token.GetSddl());
                                     }
                                 }
                             }
@@ -251,9 +346,8 @@ namespace CheckProcessAccess
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex);
             }
         }
-
     }
 }
